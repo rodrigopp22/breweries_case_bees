@@ -13,6 +13,7 @@ SILVER_LAYER_PATH = "lake/2_silver/tb_brewery_data"
 
 date_now = datetime.date.today()
 
+
 def create_spark_session():
     conf = SparkConf().set("hive.exec.dynamic.partition", "true") \
         .set("hive.exec.dynamic.partition.mode", "nonstrict") \
@@ -20,6 +21,7 @@ def create_spark_session():
     spark = SparkSession.builder.config(
         conf=conf).enableHiveSupport().getOrCreate()
     return spark
+
 
 def read_data_from_bronze(spark, file_path: str):
     schema = StructType([
@@ -33,38 +35,44 @@ def read_data_from_bronze(spark, file_path: str):
         StructField("state_province", StringType(), True),
         StructField("postal_code", StringType(), True),
         StructField("country", StringType(), True),
-        StructField("longitude", DoubleType(), True),  
-        StructField("latitude", DoubleType(), True),   
+        StructField("longitude", DoubleType(), True),
+        StructField("latitude", DoubleType(), True),
         StructField("phone", StringType(), True),
         StructField("website_url", StringType(), True),
         StructField("state", StringType(), True),
         StructField("street", StringType(), True)
     ])
-    
+
     logging.info("Lendo dados em %s", BRONZE_LAYER_PATH)
-    
+
     df = spark.read.schema(schema)\
                    .option('multiline', 'true')\
                    .json(file_path)
     return df
 
+
 def run():
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s')
     logging.info(f"Iniciando a execução do dia {date_now}")
     spark = create_spark_session()
-    
+
     bronze_path = f'{BRONZE_LAYER_PATH}/*.json'
     df_bronze = read_data_from_bronze(spark, bronze_path)
-    
-    logging.info("Foram lidos %i registros da camada bronze", df_bronze.count())
-    
-    # removendo registros que podem ter país com valor nulo ou tipo de brewery nulo, removendo ids duplicados
+
+    logging.info(
+        "Foram lidos %i registros da camada bronze",
+        df_bronze.count())
+
+    # removendo registros que podem ter país com valor nulo ou tipo de brewery
+    # nulo, removendo ids duplicados
     df_clean = df_bronze.filter((df_bronze.country.isNotNull()) & (df_bronze.brewery_type.isNotNull()))\
                         .drop_duplicates(["id"])\
-                        .withColumn("country", trim(col("country"))) # existe um caso para United States que está escrito com um espaço a mais
+                        .withColumn("country", trim(col("country")))  # existe um caso para United States que está escrito com um espaço a mais
 
     logging.info("Dados limpos, %i registros", df_clean.count())
-    
+
     logging.info("Escrevendo %i registros na silver layer", df_clean.count())
 
     # repartition para melhorar a escrita dos arquivos por conta de small files
@@ -73,8 +81,10 @@ def run():
             .format(FORMAT)\
             .partitionBy('country') \
             .parquet(SILVER_LAYER_PATH)
-    
+
     logging.info("Fim do processo.")
-    
+
     spark.stop()
+
+
 run()
