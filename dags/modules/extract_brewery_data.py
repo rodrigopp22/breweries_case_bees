@@ -4,7 +4,7 @@ import logging
 import os
 import requests
 
-BRONZE_LAYER_PATH = "lake/1_bronze/"
+BRONZE_LAYER_PATH = "/opt/airflow/data/1_bronze/"
 
 
 def save_json_file(breweries_data: list, folder_path: str, page: int) -> None:
@@ -44,6 +44,7 @@ def run():
         format='%(asctime)s - %(levelname)s - %(message)s')
     logging.info(f"Iniciando a execução do dia {date_now}")
     get_brewery_data(BRONZE_LAYER_PATH)
+    logging.info("Fim da extração de dados.")
 
-
-run()
+if __name__ == '__main__':
+    run()

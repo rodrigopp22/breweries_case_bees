@@ -1,17 +1,14 @@
-import logging
 import datetime
-
+import logging
 
 from pyspark import SparkConf
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import *
 from pyspark.sql.types import *
 
-BRONZE_LAYER_PATH = "lake/1_bronze"
-FORMAT = 'parquet'
-SILVER_LAYER_PATH = "lake/2_silver/tb_brewery_data"
-
-date_now = datetime.date.today()
+SILVER_LAYER_PATH = "/opt/airflow/data/2_silver"
+TABLE_PATH = "/opt/airflow/data/3_gold/tb_brewery_data"
+FORMAT = "parquet"
 
 
 def create_spark_session():
@@ -23,7 +20,7 @@ def create_spark_session():
     return spark
 
 
-def read_data_from_bronze(spark, file_path: str):
+def read_data_from_silver(spark):
     schema = StructType([
         StructField("id", StringType(), False),
         StructField("name", StringType(), False),
@@ -43,48 +40,38 @@ def read_data_from_bronze(spark, file_path: str):
         StructField("street", StringType(), True)
     ])
 
-    logging.info("Lendo dados em %s", BRONZE_LAYER_PATH)
-
     df = spark.read.schema(schema)\
-                   .option('multiline', 'true')\
-                   .json(file_path)
+        .format(FORMAT)\
+        .load(SILVER_LAYER_PATH)\
+        .select("country", "brewery_type")
+
+    logging.info("Foram lidos %i registros da silver layer", df.count())
+
     return df
+
+
+def create_aggregated_view(df):
+    df_agg = df.groupBy("country", "brewery_type").count()
+    logging.info("A view gerada contém %i registros", df_agg.count())
+    return df_agg
 
 
 def run():
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s')
-    logging.info(f"Iniciando a execução do dia {date_now}")
+    logging.info(f"Iniciando a execução do dia {datetime.date.today()}")
     spark = create_spark_session()
-
-    bronze_path = f'{BRONZE_LAYER_PATH}/*.json'
-    df_bronze = read_data_from_bronze(spark, bronze_path)
-
-    logging.info(
-        "Foram lidos %i registros da camada bronze",
-        df_bronze.count())
-
-    # removendo registros que podem ter país com valor nulo ou tipo de brewery
-    # nulo, removendo ids duplicados
-    df_clean = df_bronze.filter((df_bronze.country.isNotNull()) & (df_bronze.brewery_type.isNotNull()))\
-                        .drop_duplicates(["id"])\
-                        .withColumn("country", trim(col("country")))  # existe um caso para United States que está escrito com um espaço a mais
-
-    logging.info("Dados limpos, %i registros", df_clean.count())
-
-    logging.info("Escrevendo %i registros na silver layer", df_clean.count())
-
-    # repartition para melhorar a escrita dos arquivos por conta de small files
-    df_clean.repartition("country")\
-            .write.mode('overwrite') \
-            .format(FORMAT)\
-            .partitionBy('country') \
-            .parquet(SILVER_LAYER_PATH)
-
+    df = read_data_from_silver(spark)
+    df_agg = create_aggregated_view(df)
+    logging.info("Salvando a view gerada...")
+    df_agg.write\
+        .mode("overwrite") \
+        .format(FORMAT)\
+        .parquet(TABLE_PATH)
     logging.info("Fim do processo.")
 
     spark.stop()
-
-
-run()
+    
+if __name__ == '__main__':
+    run()
