@@ -8,7 +8,7 @@ from modules.load_tb_brewery_by_location import run as load_data
 
 dag = DAG(
     'bees_pipeline',
-    start_date= datetime(2024,10,16),
+    start_date=datetime(2024, 10, 16),
     description='Pipeline para o case de DE da BEES',
     catchup=False
 )

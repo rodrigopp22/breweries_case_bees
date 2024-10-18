@@ -72,6 +72,7 @@ def run():
     logging.info("Fim do processo.")
 
     spark.stop()
-    
+
+
 if __name__ == '__main__':
     run()

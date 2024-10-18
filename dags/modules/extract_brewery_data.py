@@ -46,5 +46,6 @@ def run():
     get_brewery_data(BRONZE_LAYER_PATH)
     logging.info("Fim da extração de dados.")
 
+
 if __name__ == '__main__':
     run()
