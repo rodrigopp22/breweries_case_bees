@@ -3,35 +3,31 @@ Este repositório contém uma solução para o case de data engineering da BEES.
 
 ### Estrutura do repositório
 
-- **dags/**: Contém os DAGs (Directed Acyclic Graphs) do Apache Airflow para orquestrar o pipeline de dados.
+- **dags/**: Contém os DAGs do Airflow para orquestrar o pipeline de dados.
   
 - **modules/**: 
   - **utils/**: Módulos utilitários usados no pipeline.
     - `EnvironmentVariables.py`: Define e gerencia variáveis de ambiente necessárias para o pipeline.
-    - `extract_brewery_data.py`: Script responsável pela extração dos dados das cervejarias de uma API.
-    - `load_tb_brewery_by_location.py`: Carrega os dados de cervejarias transformados para um local específico.
-    - `transform_brewery_data.py`: Realiza a transformação dos dados extraídos, preparando-os para a fase de carregamento.
-    - `brewery_pipeline.py`: Integra e organiza as várias fases do pipeline de dados.
+  - `extract_brewery_data.py`: Script responsável pela extração dos dados das cervejarias de uma API.
+  - `load_tb_brewery_by_location.py`: Carrega os dados de cervejarias agregados por localização e tipo.
+  - `transform_brewery_data.py`: Realiza a transformação dos dados extraídos, preparando-os para a fase de carregamento.
+  - `brewery_pipeline.py`: É o arquivo que, de fato, cria o DAG, estabelecendo a ordem de execução de cada script.
 
-- **data/**: Diretório onde os dados são armazenados durante o pipeline (bronze, silver, gold).
+- **data/**: Diretório onde os dados são armazenados durante a execução do pipeline (bronze, silver, gold). É uma pasta montada.
 
 - **docs/**: Contém a documentação relacionada ao projeto.
   
-- **logs/**: Diretório usado pelo Airflow para armazenar logs de execução.
-
-- **plugins/**: Contém possíveis plugins do Airflow que possam ser usados no projeto.
-
 - **tests/**: Scripts de teste para garantir a integridade do pipeline e seus módulos.
 
-- **.env**: Arquivo de variáveis de ambiente contendo configurações sensíveis como chaves de API e credenciais.
+- **.env**: Arquivo de configuração do docker-compose do Airflow.
 
-- **docker-compose.yml**: Arquivo de configuração Docker Compose para facilitar a criação e execução do ambiente com Airflow e seus componentes.
+- **docker-compose.yml**: Arquivo de configuração docker-compose padrão do Apache Airflow.
 
-- **Dockerfile**: Contém as instruções para a criação da imagem Docker personalizada para este projeto, incluindo a instalação de dependências.
+- **Dockerfile**: Contém as instruções para a criação da imagem Docker personalizada para este projeto, incluindo a instalação de dependências e variáveis de ambiente.
 
-- **requirements.txt**: Lista as dependências de Python necessárias para o pipeline.
+- **requirements.txt**: Lista as dependências de Python necessárias.
 
-# Como executar o projeto
+# Como iniciar o Airflow
 Para executar a solução, certifique-se que tenha o Docker instalado em sua máquina.
 Ao clonar o repositório, você deverá acessá-lo pelo terminal e digitar o seguinte comando:
 ```
@@ -45,5 +41,19 @@ Este comando fará com que um container seja inicializado. Ao terminar a configu
 ```
 localhost:8080/
 ```
-Para o case, o usuário e senha são o padrão.
-Para iniciar o DAG, clique em "brewery_pipeline" e aperte executar.
+Para o case, o usuário e senha são o padrão:
+```
+usuário: airflow
+```
+```
+senha: airflow
+```
+# Como executar o pipeline
+Para iniciar o DAG, na página inicial, você irá ver o DAG como na imagem abaixo:
+![](docs/imagens/pipeline.png)
+Clique no botão de **play** (actions) e em seguida clique em **Trigger DAG**, como na imagem abaixo.
+![](docs/imagens/pipeline2.png)
+Após isso, para se ter uma visão melhor da execução, você pode clicar em **bees_pipeline** e terá a visão de grafos, como na imagem abaixo:
+![](docs/imagens/graph_view.png)
+É possível clicar em cada task e acompanhar o log durante a execução delas.
+![](docs/imagens/pipeline_log_view.png)
