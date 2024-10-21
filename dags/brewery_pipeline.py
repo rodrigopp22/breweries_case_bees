@@ -2,9 +2,14 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import datetime
 
-from modules.extract_brewery_data import run as extract_data
-from modules.transform_brewery_data import run as transform_data
-from modules.load_tb_brewery_by_location import run as load_data
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from dags.modules.extract_brewery_data import run as extract_data
+from dags.modules.transform_brewery_data import run as transform_data
+from dags.modules.load_tb_brewery_by_location import run as load_data
 
 dag = DAG(
     'bees_pipeline',
@@ -16,18 +21,21 @@ dag = DAG(
 extract_task = PythonOperator(
     task_id='extract_data',
     python_callable=extract_data,
+    retries=3,
     dag=dag,
 )
 
 transform_task = PythonOperator(
     task_id='transform_data',
     python_callable=transform_data,
+    retries=3,
     dag=dag,
 )
 
 load_task = PythonOperator(
     task_id='load_data',
     python_callable=load_data,
+    retries=3,
     dag=dag,
 )
 

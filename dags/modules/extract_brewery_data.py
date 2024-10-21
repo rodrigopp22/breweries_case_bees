@@ -4,7 +4,7 @@ import logging
 import os
 import requests
 
-BRONZE_LAYER_PATH = "/opt/airflow/data/1_bronze/"
+from dags.modules.utils.EnvironmentVariables import EnvironmentVariables
 
 
 def save_json_file(breweries_data: list, folder_path: str, page: int) -> None:
@@ -39,11 +39,12 @@ def get_brewery_data(folder_path: str) -> None:
 
 def run():
     date_now = datetime.date.today()
+    bronze_layer_path = EnvironmentVariables.bronze_path
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s')
     logging.info(f"Iniciando a execução do dia {date_now}")
-    get_brewery_data(BRONZE_LAYER_PATH)
+    get_brewery_data(bronze_layer_path)
     logging.info("Fim da extração de dados.")
 
 

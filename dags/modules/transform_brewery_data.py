@@ -1,30 +1,34 @@
 import logging
 import datetime
 
-
 from pyspark import SparkConf
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import *
 from pyspark.sql.types import *
 
-BRONZE_LAYER_PATH = "/opt/airflow/data/1_bronze"
-FORMAT = 'parquet'
-SILVER_LAYER_PATH = "/opt/airflow/data/2_silver/tb_brewery_data"
-
-date_now = datetime.date.today()
+from dags.modules.utils.EnvironmentVariables import EnvironmentVariables
 
 
-def create_spark_session():
-    conf = SparkConf().set("hive.exec.dynamic.partition", "true") \
-        .set("hive.exec.dynamic.partition.mode", "nonstrict") \
-        .set("spark.sql.sources.partitionOverwriteMode", "dynamic")
+def create_spark_session() -> SparkSession:
+    '''
+    Cria e configura uma sessão Spark.
+    '''
+    conf = (SparkConf()
+            .setAppName("load_tb_brewery_by_location")
+            .setMaster("local")
+            .set("spark.executors.instances", 3)
+            .set("spark.executors.cores", 5)
+            .set("spark.executor.memory", "2g"))
     spark = SparkSession.builder.config(
         conf=conf).enableHiveSupport().getOrCreate()
     return spark
 
 
-def read_data_from_bronze(spark, file_path: str) -> DataFrame:
-    schema = StructType([
+def get_schema() -> StructType:
+    '''
+    Retorna o schema pré-definido de uma tabela.
+    '''
+    return StructType([
         StructField("id", StringType(), False),
         StructField("name", StringType(), False),
         StructField("brewery_type", StringType(), False),
@@ -43,7 +47,24 @@ def read_data_from_bronze(spark, file_path: str) -> DataFrame:
         StructField("street", StringType(), True)
     ])
 
-    logging.info("Lendo dados em %s", BRONZE_LAYER_PATH)
+
+def read_json_from_path(spark: SparkSession, schema: StructType, file_path: str) -> DataFrame:
+    """
+    Lê dados de um arquivo JSON a partir de um caminho especificado, utilizando um schema predefinido.
+
+    Argumentos:
+    spark : SparkSession
+        A instância ativa do SparkSession que será usada para ler os dados.
+    schema : StructType
+        O schema que define a estrutura dos dados a serem lidos. Isso garante que os dados JSON sejam lidos com a tipagem correta.
+    file_path : str
+        O caminho completo do arquivo JSON que será lido.
+
+    Retorno:
+    DataFrame
+        Um DataFrame PySpark contendo os dados lidos do arquivo JSON com o schema aplicado.
+    """
+    logging.info("Lendo dados em %s", file_path)
 
     df = spark.read.schema(schema)\
                    .option('multiline', 'true')\
@@ -55,11 +76,14 @@ def run() -> None:
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s')
+    date_now = datetime.date.today()
     logging.info(f"Iniciando a execução do dia {date_now}")
+    env_vars = EnvironmentVariables()
+    bronze_layer_path = env_vars.bronze_path
+    silver_layer_path = env_vars.silver_path
     spark = create_spark_session()
-
-    bronze_path = f'{BRONZE_LAYER_PATH}/*.json'
-    df_bronze = read_data_from_bronze(spark, bronze_path)
+    schema = get_schema()
+    df_bronze = read_json_from_path(spark, schema, bronze_layer_path)
 
     logging.info(
         "Foram lidos %i registros da camada bronze",
@@ -78,9 +102,9 @@ def run() -> None:
     # repartition para melhorar a escrita dos arquivos por conta de small files
     df_clean.repartition("country")\
             .write.mode('overwrite') \
-            .format(FORMAT)\
+            .format('parquet')\
             .partitionBy('country') \
-            .parquet(SILVER_LAYER_PATH)
+            .parquet(silver_layer_path)
 
     logging.info("Fim do processo.")
 
