@@ -1,42 +1,17 @@
-# BEES Data Engineering – Breweries Case
+## Sobre a solução
 
-## Objective:
+A solução foi feita com o objetivo de resolver o case de engenharia de dados da BEES utilizando Airflow, Python e PySpark.
 
-The goal of this test is to assess your skills in consuming data from an API, transforming and persisting it into a data lake following the medallion architecture with three layers: raw data, curated data partitioned by location, and an analytical aggregated layer.
+O DAG é criado pelo script brewery_pipeline.py, nele são definidas as ordens de precedência de execução das tarefas, bem como o seu scheduler e as quantidades de retentativas em caso de falha na execução. Para o case, não foi desenvolvida uma maneira de envio de e-mail em caso de falha, o que poderia ser uma solução interessante para acompanhar o status do pipeline.
 
-## Instructions:
+Para simular um _data lake_, quando o Docker é iniciado, a pasta **data/** é criada juntamente com **data/1_bronze**, **data/2_silver** e **data/3_gold**. Cada uma destas pastas representa uma camada da arquitetura medallion, caso a solução utilizasse de serviços de cloud, essas pastas poderiam ser pastas de um bucket, como o S3 ou o Cloud Storage.
 
-1. **API**: Use the Open Brewery DB API to fetch data. The API has an endpoint for listing breweries: <https://www.openbrewerydb.org/>
+A primeira _task_ do DAG é o script **extract_brewery_data.py**. Ele é responsável por extrair os dados da API através da biblioteca _requests_ do Python. Esta API tem paginação e, portanto, foi necessário percorrer suas páginas para obter todos os dados disponíveis, cada página é salva com o seu número e em .json no que seria a camada de bronze do _data lake_. Esses dados não são modificados e nem tratados.
 
-2. **Orchestration Tool**: Choose the orchestration tool of your preference (Airflow, Luigi, Mage, etc.) to build a data pipeline. We're interested in seeing your ability to handle scheduling, retries, and error handling in the pipeline.
+O segunda _task_ do DAG é a **transform_brewery_data.py**. Esse script é responsável por aplicar um schema aos dados da camada bronze, filtrar e tratá-los. No tratamento, checamos se há países e tipos de cervejaria nulos e removemos eles, removemos os identificadores (ids) duplicados e, por fim, removemos um espaço a mais que tem em um caso do país _United States_.
+Note que essa é a primeira task em que o PySpark é utilizado, apesar da quantidade de dados não ser grande o suficiente para o uso do Spark, a escolha para essa ferramenta foi puramente para demonstrar o uso dela.
 
-3. **Language**: Use the language of your preference for the requests and data transformation. Please include test cases for your code. Python and PySpark are preferred but not mandatory.
+Por fim, a última _task_ do DAG é o script **load_tb_brewery_by_location.py**. Ele é responsável por gerar a visão agregada dos dados. É um script que poderia ser uma query em SQL em algum Data Warehouse ou Lakehouse. Novamente o uso do PySpark aqui é apenas para demonstrar o seu uso, não é necessário e provavelmente afeta o desempenho da solução.
 
-4. **Containerization**: If you use Docker or Kubernetes for modularization, you'll earn extra points.
-
-5. **Data Lake Architecture**: Your data lake must follow the medallion architecture having a bronze, silver, and gold layer:
-   - **Bronze Layer**: Persist the raw data from the API in its native format or any format you find suitable.
-   - **Silver Layer**: Transform the data to a columnar storage format such as parquet or delta, and partition it by brewery location. Please explain any other transformations you perform.
-   - **Gold Layer**: Create an aggregated view with the quantity of breweries per type and location.
-
-6. **Monitoring/Alerting**: Describe how you would implement a monitoring and alerting process for this pipeline. Consider data quality issues, pipeline failures, and other potential problems in your response.
-
-7. **Repository**: Create a public repository on GitHub with your solution. Document your design choices, trade-offs, and provide clear instructions on how to run your application.
-
-8. **Cloud Services**: If your solution requires any cloud services, please provide instructions on how to set them up. Please do not post them in your public repository.
-
-## Evaluation Criteria:
-
-Your solution will be evaluated based on the following criteria:
-1. Code Quality
-2. Solution Design
-3. Efficiency
-4. Completeness
-5. Documentation
-6. Error Handling
-
-## Time Frame:
-
-Please complete the test within 1 week and share the link to your GitHub repository with us.
-
-_Remember, the goal of this test is to showcase your skills and approach to building a data pipeline. Good luck!_
+Em termos de monitoramento, logs simples foram feitos para demonstrarem a viabilidade para acompanhar a execução das _tasks_, esses logs poderiam ser observados em ferramentas como o AWS CloudWatch e o GCP Logs Explorer, por exemplo.
+Em termos de qualidade de dados, um _framework_ de qualidade de dados poderia ser utilizado, como o **Great Expectations**. Nele, é possível criar testes de dados diretamente nos dataframes criados no Spark. Há também outras decisões de arquitetura que podem ser tomadas neste sentido, como por exemplo a criação de uma "reciclagem de dados" ou de uma quarentena para a validação deles - para o case, provavelmente esses dois últimos casos não seriam tão úteis.
