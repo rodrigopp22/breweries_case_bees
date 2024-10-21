@@ -1,6 +1,8 @@
 # Case DE BEES - Breweries
 Este repositório contém uma solução para o case de data engineering da BEES. Um pipeline foi desenvolvido para extrair, transformar e carregar dados de cervejarias, tudo orquestrado pelo Apache Airflow.
 
+A explicação sobre a solução está disponível [neste link](docs/README.md)
+
 ### Estrutura do repositório
 
 - **dags/**: Contém os DAGs do Airflow para orquestrar o pipeline de dados.
