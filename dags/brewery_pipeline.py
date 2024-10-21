@@ -29,21 +29,21 @@ dag = DAG(
 )
 
 extract_task = PythonOperator(
-    task_id='extract_data',
+    task_id='extract_brewery_data_from_api',
     python_callable=extract_data,
     execution_timeout=timedelta(minutes=30),
     dag=dag,
 )
 
 transform_task = PythonOperator(
-    task_id='transform_data',
+    task_id='transform_data_from_bronze_to_silver',
     python_callable=transform_data,
     execution_timeout=timedelta(minutes=30),
     dag=dag,
 )
 
 load_task = PythonOperator(
-    task_id='load_data',
+    task_id='load_aggregate_view_in_gold',
     python_callable=load_data,
     execution_timeout=timedelta(minutes=30),
     dag=dag,
