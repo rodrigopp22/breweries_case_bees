@@ -22,7 +22,7 @@ default_args = {
 dag = DAG(
     'bees_pipeline',
     default_args=default_args,
-    schedule_interval='@daily',
+    schedule_interval='*/30 * * * *',
     description='Pipeline para o case de DE da BEES',
     default_view='graph',
     catchup=False
